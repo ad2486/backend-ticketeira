@@ -1,21 +1,150 @@
 // use prisma-8
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String?
-  name      String?
-  posts     Post[]
-  createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
+  id            Uuid                                @id @default(dbgenerated("uuidv7()"))
+  email         String                              @unique                                 
+  name          String                                                                      
+  city          String
+  state         State
+  cpf           String                              @unique                                
+  tier          Tier                                @default(Free)
+  passwordHash  String                              @map("password_hash")
+  birthDate     Date                                @map("birth_date")                      
+  createdAt     TimestamptzString @default(now())   @map("created_at")
+  updatedAt     temporal.updatedAtString()          @map("updated_at")
+
+  @@check(expression: "email = lower(email)", name: "user_email_lowercase")
+  @@check(expression: "length(btrim(name)) > 0", name: "user_name_not_blank") 
+  @@check(expression: "cpf ~ '^[0-9]{11}$'", name: "user_cpf_digits")
+  @@check(expression: "birth_date > DATE '1900-01-01'", name: "user_birth_date_sane")
+
+  @@map("users")
 }
 
-model Post {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String?
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  Int
-  createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
+model Event {
+  id            Uuid                                @id @default(dbgenerated("uuidv7()"))
+  creatorId     Uuid                                @map("creator_id")
+  creator       User                                @relation(fields: [creatorId], references: [id])
+  capacity      Int
+  title         String
+  description   String?
+  startsAt      TimestamptzString                    @map("starts_at")
+  location      String
+  city          String
+  state         State
+  status        EventStatus                         @default(Draft)
+  minAge        Int                                 @default(0) @map("min_age")
+  ticketPriceCents  Int                             @map("ticket_price_cents")
+  soldTickets   Int                                 @default(0) @map("sold_tickets")
+  createdAt     TimestamptzString @default(now())   @map("created_at")
+  updatedAt     temporal.updatedAtString()          @map("updated_at")
+
+  @@check(expression: "min_age >= 0", name: "event_min_age_non_negative")
+  @@check(expression: "capacity > 0", name: "event_capacity_positive")
+  @@check(expression: "sold_tickets >= 0", name: "event_sold_tickets_non_negative")
+  @@check(expression: "sold_tickets <= capacity", name: "event_sold_tickets_within_capacity")
+  @@check(expression: "ticket_price_cents >= 0", name: "event_ticket_price_non_negative")
+  @@check(expression: "length(btrim(title)) > 0", name: "event_title_not_blank")
+  @@check(expression: "length(btrim(city)) > 0", name: "event_city_not_blank")
+  @@check(expression: "length(btrim(location)) > 0", name: "event_location_not_blank")
+
+  @@index([creatorId])
+  @@map("events")
+}
+
+model Order {
+  id           Uuid                                @id @default(dbgenerated("uuidv7()"))
+  userId       Uuid                                @map("user_id")
+  user         User                                @relation(fields: [userId], references: [id])
+  eventId      Uuid                                @map("event_id")
+  event        Event                               @relation(fields: [eventId], references: [id])
+  paymentId    String?                             @unique @map("payment_id")
+  status       OrderStatus                         @default(Pending)
+  quantity     Int
+  unitPriceCents  Int                              @map("unit_price_cents")
+  expiresAt       TimestamptzString                @default(dbgenerated("(now() + '00:10:00'::interval)")) @map("expires_at")
+  createdAt       TimestamptzString @default(now()) @map("created_at")
+  updatedAt       temporal.updatedAtString()       @map("updated_at")
+
+  @@check(expression: "quantity > 0", name: "order_quantity_positive")
+  @@check(expression: "unit_price_cents >= 0", name: "order_unit_price_non_negative")
+
+  @@unique([id, eventId])
+
+  @@index([userId])
+  @@index([eventId])
+  @@map("orders")
+}
+
+model Ticket {
+  id        Uuid                                  @id @default(dbgenerated("uuidv7()"))
+  orderId   Uuid                                  @map("order_id")
+  order     Order                                 @relation(fields: [orderId, eventId], references: [id, eventId])
+  userId    Uuid                                  @map("user_id")
+  user      User                                  @relation(fields: [userId], references: [id])
+  eventId   Uuid                                  @map("event_id")
+  event     Event                                 @relation(fields: [eventId], references: [id])
+  uniqueCode  Uuid                                @unique @default(dbgenerated("gen_random_uuid()"))  @map("unique_code")
+  checkedInAt TimestamptzString?                   @map("checked_in_at")
+  createdAt       TimestamptzString @default(now()) @map("created_at")
+  updatedAt       temporal.updatedAtString()       @map("updated_at")
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([eventId])
+  @@map("tickets")
+}
+
+enum Tier {
+  @@type("pg/text@1")
+    Free = "free"
+    Verified = "verified"
+    Pro = "pro"
+  }
+
+enum EventStatus {
+  @@type("pg/text@1")
+  Draft = "draft"
+  Published = "published"
+  Finished = "finished"
+  Canceled = "canceled"
+}
+
+enum OrderStatus {
+  @@type("pg/text@1")
+  Pending = "pending"
+  Paid = "paid"
+  Expired = "expired"
+  Canceled = "canceled"
+}
+
+enum State {
+  @@type("pg/text@1")
+  AC = "AC"
+  AL = "AL"
+  AP = "AP"
+  AM = "AM"
+  BA = "BA"
+  CE = "CE"
+  DF = "DF"
+  ES = "ES"
+  GO = "GO"
+  MA = "MA"
+  MT = "MT"
+  MS = "MS"
+  MG = "MG"
+  PA = "PA"
+  PB = "PB"
+  PR = "PR"
+  PE = "PE"
+  PI = "PI"
+  RJ = "RJ"
+  RN = "RN"
+  RS = "RS"
+  RO = "RO"
+  RR = "RR"
+  SC = "SC"
+  SP = "SP"
+  SE = "SE"
+  TO = "TO"
 }

@@ -1,0 +1,910 @@
+[
+  {
+    "id": "schema.public",
+    "label": "Create schema \"public\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "Create schema \"public\"",
+        "sql": "CREATE SCHEMA IF NOT EXISTS \"public\"",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.events",
+    "label": "Create table \"events\"",
+    "summary": "Creates table \"events\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "events"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"events\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"events\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"events\"",
+        "sql": "CREATE TABLE \"public\".\"events\" (\n  \"capacity\" int4 NOT NULL,\n  \"city\" text NOT NULL,\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"creator_id\" uuid NOT NULL,\n  \"description\" text,\n  \"id\" uuid DEFAULT (uuidv7()) NOT NULL,\n  \"location\" text NOT NULL,\n  \"min_age\" int4 DEFAULT 0 NOT NULL,\n  \"sold_tickets\" int4 DEFAULT 0 NOT NULL,\n  \"starts_at\" timestamptz NOT NULL,\n  \"state\" text NOT NULL,\n  \"status\" text DEFAULT 'draft' NOT NULL,\n  \"ticket_price_cents\" int4 NOT NULL,\n  \"title\" text NOT NULL,\n  \"updated_at\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"event_capacity_positive_2e07dccc\" CHECK (capacity > 0),\n  CONSTRAINT \"event_city_not_blank_dd00f551\" CHECK (length(btrim(city)) > 0),\n  CONSTRAINT \"event_location_not_blank_6da3d33f\" CHECK (length(btrim(location)) > 0),\n  CONSTRAINT \"event_min_age_non_negative_f7a38054\" CHECK (min_age >= 0),\n  CONSTRAINT \"event_sold_tickets_non_negative_ccdc5d6f\" CHECK (sold_tickets >= 0),\n  CONSTRAINT \"event_sold_tickets_within_capacity_2a5d55d1\" CHECK (sold_tickets <= capacity),\n  CONSTRAINT \"event_ticket_price_non_negative_ced1f005\" CHECK (ticket_price_cents >= 0),\n  CONSTRAINT \"event_title_not_blank_e4be2e72\" CHECK (length(btrim(title)) > 0),\n  CONSTRAINT \"events_state_check_eed704be\" CHECK (\"state\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')),\n  CONSTRAINT \"events_status_check_2a618994\" CHECK (\"status\" IN ('draft', 'published', 'finished', 'canceled'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"events\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"events\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.orders",
+    "label": "Create table \"orders\"",
+    "summary": "Creates table \"orders\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "orders"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"orders\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orders\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"orders\"",
+        "sql": "CREATE TABLE \"public\".\"orders\" (\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"event_id\" uuid NOT NULL,\n  \"expires_at\" timestamptz DEFAULT ((now() + '00:10:00'::interval)) NOT NULL,\n  \"id\" uuid DEFAULT (uuidv7()) NOT NULL,\n  \"payment_id\" text,\n  \"quantity\" int4 NOT NULL,\n  \"status\" text DEFAULT 'pending' NOT NULL,\n  \"unit_price_cents\" int4 NOT NULL,\n  \"updated_at\" timestamptz NOT NULL,\n  \"user_id\" uuid NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"order_quantity_positive_4402679f\" CHECK (quantity > 0),\n  CONSTRAINT \"order_unit_price_non_negative_3f57b02c\" CHECK (unit_price_cents >= 0),\n  CONSTRAINT \"orders_status_check_a7599fa2\" CHECK (\"status\" IN ('pending', 'paid', 'expired', 'canceled'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"orders\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orders\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.tickets",
+    "label": "Create table \"tickets\"",
+    "summary": "Creates table \"tickets\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "tickets"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"tickets\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"tickets\"",
+        "sql": "CREATE TABLE \"public\".\"tickets\" (\n  \"checked_in_at\" timestamptz,\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"event_id\" uuid NOT NULL,\n  \"id\" uuid DEFAULT (uuidv7()) NOT NULL,\n  \"order_id\" uuid NOT NULL,\n  \"unique_code\" uuid DEFAULT (gen_random_uuid()) NOT NULL,\n  \"updated_at\" timestamptz NOT NULL,\n  \"user_id\" uuid NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"tickets\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.users",
+    "label": "Create table \"users\"",
+    "summary": "Creates table \"users\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "users"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"users\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"users\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"users\"",
+        "sql": "CREATE TABLE \"public\".\"users\" (\n  \"birth_date\" date NOT NULL,\n  \"city\" text NOT NULL,\n  \"cpf\" text NOT NULL,\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"email\" text NOT NULL,\n  \"id\" uuid DEFAULT (uuidv7()) NOT NULL,\n  \"name\" text NOT NULL,\n  \"password_hash\" text NOT NULL,\n  \"state\" text NOT NULL,\n  \"tier\" text DEFAULT 'free' NOT NULL,\n  \"updated_at\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"user_birth_date_sane_a8c202e4\" CHECK (birth_date > DATE '1900-01-01'),\n  CONSTRAINT \"user_cpf_digits_f6d9ff4d\" CHECK (cpf ~ '^[0-9]{11}$'),\n  CONSTRAINT \"user_email_lowercase_9b410a78\" CHECK (email = lower(email)),\n  CONSTRAINT \"user_name_not_blank_370c3422\" CHECK (length(btrim(name)) > 0),\n  CONSTRAINT \"users_state_check_eed704be\" CHECK (\"state\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')),\n  CONSTRAINT \"users_tier_check_c2bbe1a7\" CHECK (\"tier\" IN ('free', 'verified', 'pro'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"users\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"users\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.orders.orders_payment_id_key",
+    "label": "Add unique constraint on \"orders\" (payment_id)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "orders_payment_id_key",
+        "table": "orders"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"orders_payment_id_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orders_payment_id_key",
+          "public",
+          "\"public\".\"orders\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"orders_payment_id_key\"",
+        "sql": "ALTER TABLE \"public\".\"orders\" ADD CONSTRAINT \"orders_payment_id_key\" UNIQUE (\"payment_id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"orders_payment_id_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orders_payment_id_key",
+          "public",
+          "\"public\".\"orders\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.orders.orders_id_event_id_key",
+    "label": "Add unique constraint on \"orders\" (id, event_id)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "orders_id_event_id_key",
+        "table": "orders"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"orders_id_event_id_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orders_id_event_id_key",
+          "public",
+          "\"public\".\"orders\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"orders_id_event_id_key\"",
+        "sql": "ALTER TABLE \"public\".\"orders\" ADD CONSTRAINT \"orders_id_event_id_key\" UNIQUE (\"id\", \"event_id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"orders_id_event_id_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orders_id_event_id_key",
+          "public",
+          "\"public\".\"orders\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.tickets.tickets_unique_code_key",
+    "label": "Add unique constraint on \"tickets\" (unique_code)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "tickets_unique_code_key",
+        "table": "tickets"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"tickets_unique_code_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "tickets_unique_code_key",
+          "public",
+          "\"public\".\"tickets\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"tickets_unique_code_key\"",
+        "sql": "ALTER TABLE \"public\".\"tickets\" ADD CONSTRAINT \"tickets_unique_code_key\" UNIQUE (\"unique_code\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"tickets_unique_code_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "tickets_unique_code_key",
+          "public",
+          "\"public\".\"tickets\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.users.users_email_key",
+    "label": "Add unique constraint on \"users\" (email)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "users_email_key",
+        "table": "users"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"users_email_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "users_email_key",
+          "public",
+          "\"public\".\"users\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"users_email_key\"",
+        "sql": "ALTER TABLE \"public\".\"users\" ADD CONSTRAINT \"users_email_key\" UNIQUE (\"email\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"users_email_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "users_email_key",
+          "public",
+          "\"public\".\"users\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.users.users_cpf_key",
+    "label": "Add unique constraint on \"users\" (cpf)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "users_cpf_key",
+        "table": "users"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"users_cpf_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "users_cpf_key",
+          "public",
+          "\"public\".\"users\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"users_cpf_key\"",
+        "sql": "ALTER TABLE \"public\".\"users\" ADD CONSTRAINT \"users_cpf_key\" UNIQUE (\"cpf\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"users_cpf_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "users_cpf_key",
+          "public",
+          "\"public\".\"users\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.events.events_creator_id_idx_c8bab67a",
+    "label": "Create index \"events_creator_id_idx_c8bab67a\" on \"events\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "events_creator_id_idx_c8bab67a",
+        "table": "events"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"events_creator_id_idx_c8bab67a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"events_creator_id_idx_c8bab67a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"events_creator_id_idx_c8bab67a\"",
+        "sql": "CREATE INDEX \"events_creator_id_idx_c8bab67a\" ON \"public\".\"events\" (\"creator_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"events_creator_id_idx_c8bab67a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"events_creator_id_idx_c8bab67a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orders.orders_event_id_idx_a0568112",
+    "label": "Create index \"orders_event_id_idx_a0568112\" on \"orders\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orders_event_id_idx_a0568112",
+        "table": "orders"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orders_event_id_idx_a0568112\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orders_event_id_idx_a0568112\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orders_event_id_idx_a0568112\"",
+        "sql": "CREATE INDEX \"orders_event_id_idx_a0568112\" ON \"public\".\"orders\" (\"event_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orders_event_id_idx_a0568112\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orders_event_id_idx_a0568112\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orders.orders_user_id_idx_6c952402",
+    "label": "Create index \"orders_user_id_idx_6c952402\" on \"orders\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orders_user_id_idx_6c952402",
+        "table": "orders"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orders_user_id_idx_6c952402\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orders_user_id_idx_6c952402\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orders_user_id_idx_6c952402\"",
+        "sql": "CREATE INDEX \"orders_user_id_idx_6c952402\" ON \"public\".\"orders\" (\"user_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orders_user_id_idx_6c952402\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orders_user_id_idx_6c952402\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.tickets.tickets_event_id_idx_a0568112",
+    "label": "Create index \"tickets_event_id_idx_a0568112\" on \"tickets\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "tickets_event_id_idx_a0568112",
+        "table": "tickets"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"tickets_event_id_idx_a0568112\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets_event_id_idx_a0568112\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"tickets_event_id_idx_a0568112\"",
+        "sql": "CREATE INDEX \"tickets_event_id_idx_a0568112\" ON \"public\".\"tickets\" (\"event_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"tickets_event_id_idx_a0568112\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets_event_id_idx_a0568112\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.tickets.tickets_order_id_event_id_idx_55b8795c",
+    "label": "Create index \"tickets_order_id_event_id_idx_55b8795c\" on \"tickets\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "tickets_order_id_event_id_idx_55b8795c",
+        "table": "tickets"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"tickets_order_id_event_id_idx_55b8795c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets_order_id_event_id_idx_55b8795c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"tickets_order_id_event_id_idx_55b8795c\"",
+        "sql": "CREATE INDEX \"tickets_order_id_event_id_idx_55b8795c\" ON \"public\".\"tickets\" (\"order_id\", \"event_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"tickets_order_id_event_id_idx_55b8795c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets_order_id_event_id_idx_55b8795c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.tickets.tickets_order_id_idx_39ad19ad",
+    "label": "Create index \"tickets_order_id_idx_39ad19ad\" on \"tickets\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "tickets_order_id_idx_39ad19ad",
+        "table": "tickets"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"tickets_order_id_idx_39ad19ad\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets_order_id_idx_39ad19ad\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"tickets_order_id_idx_39ad19ad\"",
+        "sql": "CREATE INDEX \"tickets_order_id_idx_39ad19ad\" ON \"public\".\"tickets\" (\"order_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"tickets_order_id_idx_39ad19ad\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets_order_id_idx_39ad19ad\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.tickets.tickets_user_id_idx_6c952402",
+    "label": "Create index \"tickets_user_id_idx_6c952402\" on \"tickets\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "tickets_user_id_idx_6c952402",
+        "table": "tickets"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"tickets_user_id_idx_6c952402\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets_user_id_idx_6c952402\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"tickets_user_id_idx_6c952402\"",
+        "sql": "CREATE INDEX \"tickets_user_id_idx_6c952402\" ON \"public\".\"tickets\" (\"user_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"tickets_user_id_idx_6c952402\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"tickets_user_id_idx_6c952402\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.events.events_creator_id_fkey",
+    "label": "Add foreign key \"events_creator_id_fkey\" on \"events\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "events_creator_id_fkey",
+        "table": "events"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"events_creator_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "events_creator_id_fkey",
+          "public",
+          "\"public\".\"events\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"events_creator_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"events\"\nADD CONSTRAINT \"events_creator_id_fkey\"\nFOREIGN KEY (\"creator_id\")\nREFERENCES \"public\".\"users\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"events_creator_id_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "events_creator_id_fkey",
+          "public",
+          "\"public\".\"events\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orders.orders_user_id_fkey",
+    "label": "Add foreign key \"orders_user_id_fkey\" on \"orders\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orders_user_id_fkey",
+        "table": "orders"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orders_user_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orders_user_id_fkey",
+          "public",
+          "\"public\".\"orders\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orders_user_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orders\"\nADD CONSTRAINT \"orders_user_id_fkey\"\nFOREIGN KEY (\"user_id\")\nREFERENCES \"public\".\"users\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orders_user_id_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orders_user_id_fkey",
+          "public",
+          "\"public\".\"orders\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orders.orders_event_id_fkey",
+    "label": "Add foreign key \"orders_event_id_fkey\" on \"orders\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orders_event_id_fkey",
+        "table": "orders"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orders_event_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orders_event_id_fkey",
+          "public",
+          "\"public\".\"orders\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orders_event_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orders\"\nADD CONSTRAINT \"orders_event_id_fkey\"\nFOREIGN KEY (\"event_id\")\nREFERENCES \"public\".\"events\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orders_event_id_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orders_event_id_fkey",
+          "public",
+          "\"public\".\"orders\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.tickets.tickets_order_id_event_id_fkey",
+    "label": "Add foreign key \"tickets_order_id_event_id_fkey\" on \"tickets\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "tickets_order_id_event_id_fkey",
+        "table": "tickets"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"tickets_order_id_event_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "tickets_order_id_event_id_fkey",
+          "public",
+          "\"public\".\"tickets\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"tickets_order_id_event_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"tickets\"\nADD CONSTRAINT \"tickets_order_id_event_id_fkey\"\nFOREIGN KEY (\"order_id\", \"event_id\")\nREFERENCES \"public\".\"orders\" (\"id\", \"event_id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"tickets_order_id_event_id_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "tickets_order_id_event_id_fkey",
+          "public",
+          "\"public\".\"tickets\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.tickets.tickets_user_id_fkey",
+    "label": "Add foreign key \"tickets_user_id_fkey\" on \"tickets\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "tickets_user_id_fkey",
+        "table": "tickets"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"tickets_user_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "tickets_user_id_fkey",
+          "public",
+          "\"public\".\"tickets\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"tickets_user_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"tickets\"\nADD CONSTRAINT \"tickets_user_id_fkey\"\nFOREIGN KEY (\"user_id\")\nREFERENCES \"public\".\"users\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"tickets_user_id_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "tickets_user_id_fkey",
+          "public",
+          "\"public\".\"tickets\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.tickets.tickets_event_id_fkey",
+    "label": "Add foreign key \"tickets_event_id_fkey\" on \"tickets\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "tickets_event_id_fkey",
+        "table": "tickets"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"tickets_event_id_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "tickets_event_id_fkey",
+          "public",
+          "\"public\".\"tickets\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"tickets_event_id_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"tickets\"\nADD CONSTRAINT \"tickets_event_id_fkey\"\nFOREIGN KEY (\"event_id\")\nREFERENCES \"public\".\"events\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"tickets_event_id_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "tickets_event_id_fkey",
+          "public",
+          "\"public\".\"tickets\""
+        ]
+      }
+    ]
+  }
+]
