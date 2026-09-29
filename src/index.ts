@@ -17,6 +17,7 @@ const app = Fastify({
 app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
 
+
 app.get(
   "/health",
   {
@@ -30,6 +31,18 @@ app.get(
     return { health: "ok" };
   },
 );
+
+app.setErrorHandler((error, request, reply) => {
+  if (error instanceof Error && "statusCode" in error && typeof error.statusCode === "number" && error.statusCode < 500) {
+    return reply.send(error);
+  }
+  request.log.error(error);
+  return reply.code(500).send({
+    statusCode: 500,
+    error: "Internal Server Error",
+    message: "Internal Server Error",
+  });
+});
 
 app.register(usersRoutes, { prefix: "/users" });
 
