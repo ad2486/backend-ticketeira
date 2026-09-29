@@ -1,5 +1,13 @@
 node_modules/
 dist/
-.env
+coverage/
+*.log
+
+.env*
+!.env.example
+
 /.alchemy
 /.prisma-composer
+
+.DS_Store
+.idea/
