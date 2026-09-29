@@ -1,7 +1,6 @@
-process.loadEnvFile();
-
 import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 import { definePrismaConfig } from "prisma/config";
+import { env } from "./src/env.ts";
 
 export default definePrismaConfig({
 	skills: {
@@ -10,7 +9,7 @@ export default definePrismaConfig({
 	orm: ormConfig({
 		contract: "./src/prisma/contract.prisma",
 		db: {
-			connection: process.env.DATABASE_URL!,
+			connection: env.DATABASE_URL,
 		},
 	}),
 	composer: {

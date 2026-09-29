@@ -1,4 +1,5 @@
 import postgres from "@prisma/orm-postgres/runtime";
+import { env } from "../env.ts";
 
 import "temporal-polyfill/global";
 import "temporal-polyfill/types/global";
@@ -16,10 +17,7 @@ function loadComposerDatabase() {
 }
 
 export const db =
-	loadComposerDatabase() ??
-	(process.env.DATABASE_URL
-		? postgres<Contract>({ contractJson, url: process.env.DATABASE_URL })
-		: postgres<Contract>({ contractJson }));
+	loadComposerDatabase() ?? postgres<Contract>({ contractJson, url: env.DATABASE_URL });
 
 let connection: Promise<void> | undefined;
 

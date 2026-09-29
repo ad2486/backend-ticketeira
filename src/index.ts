@@ -5,12 +5,13 @@ import {
 } from "@fastify/type-provider-zod";
 import Fastify from "fastify";
 import { z } from "zod/v4";
+import { env } from "./env.ts";
 import { usersRoutes } from "./modules/users/users.routes.ts";
 
 const app = Fastify({
 	logger: {
-		level: "info",
-		transport: { target: "pino-pretty" },
+		level: env.LOG_LEVEL,
+		transport: env.NODE_ENV === "development" ? { target: "pino-pretty" } : undefined,
 	},
 }).withTypeProvider<ZodTypeProvider>();
 
@@ -51,7 +52,7 @@ app.setErrorHandler((error, request, reply) => {
 app.register(usersRoutes, { prefix: "/users" });
 
 try {
-	await app.listen({ port: 3000 });
+	await app.listen({ port: env.PORT });
 } catch (err) {
 	app.log.error(err);
 	process.exit(1);
