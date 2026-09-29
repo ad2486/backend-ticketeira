@@ -1,19 +1,42 @@
-import { createServer } from "node:http";
+import Fastify from "fastify";
+import {
+  type ZodTypeProvider,
+  serializerCompiler,
+  validatorCompiler,
+} from "@fastify/type-provider-zod";
+import { z } from "zod/v4";
+import {usersRoutes} from "./modules/users/users.routes.ts";
 
-import { listUsers } from "./prisma/users";
+const app = Fastify({
+  logger: {
+    level: "info",
+    transport: { target: "pino-pretty" },
+  },
+}).withTypeProvider<ZodTypeProvider>();
 
-const port = Number(process.env.PORT ?? 3000);
+app.setValidatorCompiler(validatorCompiler);
+app.setSerializerCompiler(serializerCompiler);
 
-createServer(async (_request, response) => {
-  try {
-    const users = await listUsers();
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({ users }));
-  } catch (error) {
-    console.error("Failed to query users:", error);
-    response.writeHead(500, { "content-type": "application/json" });
-    response.end(JSON.stringify({ error: "Could not query users yet." }));
-  }
-}).listen(port, "0.0.0.0", () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
+app.get(
+  "/health",
+  {
+    schema: {
+      response: {
+        200: z.object({ health: z.string() }),
+      },
+    },
+  },
+  async () => {
+    return { health: "ok" };
+  },
+);
+
+app.register(usersRoutes, { prefix: "/users" });
+
+try {
+  await app.listen({ port: 3000 });
+} catch (err) {
+  app.log.error(err);
+  process.exit(1);
+}
+
