@@ -1,6 +1,7 @@
 import postgres from "@prisma/orm-postgres/runtime";
 
 import "temporal-polyfill/global";
+import "temporal-polyfill/types/global";
 
 import service from "../../service.ts";
 import type { Contract } from "./contract.d.ts";
