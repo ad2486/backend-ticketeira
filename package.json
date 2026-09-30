@@ -28,6 +28,8 @@
 		"format": "biome check --write ."
 	},
 	"dependencies": {
+		"@fastify/swagger": "^9.9.0",
+		"@fastify/swagger-ui": "^6.1.1",
 		"@fastify/type-provider-zod": "^1.0.0",
 		"@prisma/composer": "0.20.0",
 		"@prisma/composer-prisma-cloud": "0.20.0",

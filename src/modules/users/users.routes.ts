@@ -1,4 +1,5 @@
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
+import { errorResponse } from "../../common/schemas.ts";
 import { createUserBody, createUserResponse } from "./users.schemas.ts";
 import { createUser } from "./users.service.ts";
 
@@ -10,6 +11,7 @@ export const usersRoutes: FastifyPluginAsyncZod = async (app) => {
 				body: createUserBody,
 				response: {
 					201: createUserResponse,
+					409: errorResponse,
 				},
 			},
 		},

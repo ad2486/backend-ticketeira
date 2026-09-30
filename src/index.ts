@@ -1,4 +1,7 @@
+import { fastifySwagger } from "@fastify/swagger";
+import { fastifySwaggerUi } from "@fastify/swagger-ui";
 import {
+	jsonSchemaTransform,
 	serializerCompiler,
 	validatorCompiler,
 	type ZodTypeProvider,
@@ -14,6 +17,14 @@ const app = Fastify({
 		transport: env.NODE_ENV === "development" ? { target: "pino-pretty" } : undefined,
 	},
 }).withTypeProvider<ZodTypeProvider>();
+
+app.register(fastifySwagger, {
+	openapi: {
+		info: { title: "Ticketeira API", version: "0.1.0" },
+	},
+	transform: jsonSchemaTransform,
+});
+app.register(fastifySwaggerUi, { routePrefix: "/docs" });
 
 app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
