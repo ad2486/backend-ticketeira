@@ -1,3 +1,4 @@
+import { fastifyJwt } from "@fastify/jwt";
 import { fastifySwagger } from "@fastify/swagger";
 import { fastifySwaggerUi } from "@fastify/swagger-ui";
 import {
@@ -9,6 +10,7 @@ import {
 import Fastify from "fastify";
 import { z } from "zod/v4";
 import { env } from "./env.ts";
+import { authRoutes } from "./modules/auth/auth.routes.ts";
 import { usersRoutes } from "./modules/users/users.routes.ts";
 
 const app = Fastify({
@@ -25,6 +27,10 @@ app.register(fastifySwagger, {
 	transform: jsonSchemaTransform,
 });
 app.register(fastifySwaggerUi, { routePrefix: "/docs" });
+app.register(fastifyJwt, {
+	secret: env.JWT_SECRET,
+	sign: { expiresIn: "15m" },
+});
 
 app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
@@ -61,6 +67,7 @@ app.setErrorHandler((error, request, reply) => {
 });
 
 app.register(usersRoutes, { prefix: "/users" });
+app.register(authRoutes, { prefix: "/auth" });
 
 try {
 	await app.listen({ port: env.PORT });
