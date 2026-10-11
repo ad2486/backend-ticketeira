@@ -5,4 +5,6 @@ export const loginBody = z.object({
 	password: z.string().min(1).max(128),
 });
 
-export const loginResponse = z.object({ accessToken: z.string(), refreshToken: z.string() });
+export const tokensResponse = z.object({ accessToken: z.string(), refreshToken: z.string() });
+
+export const refreshBody = z.object({ refreshToken: z.string().min(1) });
