@@ -1,7 +1,8 @@
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
+import { authenticate } from "../../common/auth.ts";
 import { errorResponse } from "../../common/schemas.ts";
-import { createUserBody, createUserResponse } from "./users.schemas.ts";
-import { createUser } from "./users.service.ts";
+import { createUserBody, userResponse } from "./users.schemas.ts";
+import { createUser, getUserById } from "./users.service.ts";
 
 export const usersRoutes: FastifyPluginAsyncZod = async (app) => {
 	app.post(
@@ -10,7 +11,7 @@ export const usersRoutes: FastifyPluginAsyncZod = async (app) => {
 			schema: {
 				body: createUserBody,
 				response: {
-					201: createUserResponse,
+					201: userResponse,
 					409: errorResponse,
 				},
 			},
@@ -19,5 +20,20 @@ export const usersRoutes: FastifyPluginAsyncZod = async (app) => {
 			const user = await createUser(request.body);
 			return reply.code(201).send(user);
 		},
+	);
+
+	app.get(
+		"/me",
+		{
+			onRequest: authenticate,
+			schema: {
+				response: {
+					200: userResponse,
+					401: errorResponse,
+					404: errorResponse,
+				},
+			},
+		},
+		async (request) => getUserById(request.user.sub),
 	);
 };

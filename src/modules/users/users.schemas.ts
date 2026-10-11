@@ -49,7 +49,7 @@ export const createUserBody = z.object({
 	password: z.string().min(8).max(128),
 });
 
-export const createUserResponse = z.object({
+export const userResponse = z.object({
 	id: z.uuid(),
 	name: z.string(),
 	email: z.email(),

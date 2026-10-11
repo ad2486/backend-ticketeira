@@ -34,3 +34,13 @@ export const createUser = async (data: CreateUserInput) => {
 		throw error;
 	}
 };
+
+export const getUserById = async (id: string) => {
+	const user = await db.orm.public.User.where((u) => u.id.eq(id))
+		.select("id", "name", "email", "city", "state", "tier", "createdAt")
+		.first();
+	if (!user) {
+		throw Object.assign(new Error("User not found"), { statusCode: 404 });
+	}
+	return user;
+};
