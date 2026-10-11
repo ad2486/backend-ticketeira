@@ -12,7 +12,7 @@ const envSchema = z.object({
 	DATABASE_URL: z.url(),
 	PORT: z.coerce.number().int().default(3000),
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-	LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+	LOG_LEVEL: z.enum(["silent", "fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 	JWT_SECRET: z.string().min(32),
 });
 
