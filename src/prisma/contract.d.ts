@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'5b0cc1c16eed34e53feafa5dac988e737c440139604f50e1c489cb1679e63db8'>;
+  StorageHashBase<'b5c14721fce89e492b8c18c88d66b25499a5f3e1ad3eb9db96c90fe963ab9622'>;
 export type ExecutionHash =
   ExecutionHashBase<'1b177e9ef238be023c2ed889588b953826c5929154ffd1778e178886319678d0'>;
 export type ProfileHash =
@@ -298,6 +298,14 @@ export type FieldOutputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
+    readonly RefreshToken: {
+      readonly id: CodecTypes['pg/uuid@1']['output'];
+      readonly userId: CodecTypes['pg/uuid@1']['output'];
+      readonly tokenHash: CodecTypes['pg/text@1']['output'];
+      readonly expiresAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
     readonly Ticket: {
       readonly id: CodecTypes['pg/uuid@1']['output'];
       readonly orderId: CodecTypes['pg/uuid@1']['output'];
@@ -407,6 +415,14 @@ export type FieldInputTypes = {
       readonly expiresAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly RefreshToken: {
+      readonly id: CodecTypes['pg/uuid@1']['input'];
+      readonly userId: CodecTypes['pg/uuid@1']['input'];
+      readonly tokenHash: CodecTypes['pg/text@1']['input'];
+      readonly expiresAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly Ticket: {
       readonly id: CodecTypes['pg/uuid@1']['input'];
@@ -518,6 +534,14 @@ export type StorageColumnTypes = {
       readonly updated_at: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly user_id: CodecTypes['pg/uuid@1']['output'];
     };
+    readonly refresh_tokens: {
+      readonly created_at: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly expires_at: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly id: CodecTypes['pg/uuid@1']['output'];
+      readonly revoked_at: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly token_hash: CodecTypes['pg/text@1']['output'];
+      readonly user_id: CodecTypes['pg/uuid@1']['output'];
+    };
     readonly tickets: {
       readonly checked_in_at: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly created_at: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -626,6 +650,14 @@ export type StorageColumnInputTypes = {
       readonly status: 'pending' | 'paid' | 'expired' | 'canceled';
       readonly unit_price_cents: CodecTypes['pg/int4@1']['input'];
       readonly updated_at: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly user_id: CodecTypes['pg/uuid@1']['input'];
+    };
+    readonly refresh_tokens: {
+      readonly created_at: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly expires_at: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly id: CodecTypes['pg/uuid@1']['input'];
+      readonly revoked_at: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly token_hash: CodecTypes['pg/text@1']['input'];
       readonly user_id: CodecTypes['pg/uuid@1']['input'];
     };
     readonly tickets: {
@@ -798,6 +830,16 @@ export namespace Models {
     user: public_User;
     readonly [RelationKeys]?: 'event' | 'order' | 'user';
   };
+  export type public_RefreshToken = {
+    id: CodecTypes['pg/uuid@1']['output'];
+    userId: CodecTypes['pg/uuid@1']['output'];
+    tokenHash: CodecTypes['pg/text@1']['output'];
+    expiresAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    user: public_User;
+    readonly [RelationKeys]?: 'user';
+  };
 }
 
 export declare const models: {
@@ -806,6 +848,7 @@ export declare const models: {
     Event: Models.public_Event;
     Order: Models.public_Order;
     Ticket: Models.public_Ticket;
+    RefreshToken: Models.public_RefreshToken;
   };
 };
 
@@ -1048,6 +1091,66 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'events';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly refresh_tokens: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'uuid';
+                  readonly codecId: 'pg/uuid@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'uuidv7()' };
+                };
+                readonly user_id: {
+                  readonly nativeType: 'uuid';
+                  readonly codecId: 'pg/uuid@1';
+                  readonly nullable: false;
+                };
+                readonly token_hash: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly expires_at: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+                readonly revoked_at: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly created_at: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['token_hash'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'refresh_tokens_user_id_idx_6c952402';
+                  readonly prefix: 'refresh_tokens_user_id_idx';
+                  readonly columns: readonly ['user_id'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'refresh_tokens';
+                    readonly columns: readonly ['user_id'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'users';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1302,6 +1405,10 @@ type ContractBase = Omit<
     readonly events: { readonly namespace: 'public' & NamespaceId; readonly model: 'Event' };
     readonly orders: { readonly namespace: 'public' & NamespaceId; readonly model: 'Order' };
     readonly tickets: { readonly namespace: 'public' & NamespaceId; readonly model: 'Ticket' };
+    readonly refresh_tokens: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'RefreshToken';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -1501,6 +1608,66 @@ type ContractBase = Omit<
                 readonly expiresAt: { readonly column: 'expires_at' };
                 readonly createdAt: { readonly column: 'created_at' };
                 readonly updatedAt: { readonly column: 'updated_at' };
+              };
+            };
+          };
+          readonly RefreshToken: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/uuid@1' };
+              };
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/uuid@1' };
+              };
+              readonly tokenHash: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly expiresAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly revokedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'refresh_tokens';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly userId: { readonly column: 'user_id' };
+                readonly tokenHash: { readonly column: 'token_hash' };
+                readonly expiresAt: { readonly column: 'expires_at' };
+                readonly revokedAt: { readonly column: 'revoked_at' };
+                readonly createdAt: { readonly column: 'created_at' };
               };
             };
           };

@@ -95,6 +95,19 @@ model Ticket {
   @@map("tickets")
 }
 
+model RefreshToken {
+  id      Uuid                                    @id @default(dbgenerated("uuidv7()"))
+  userId  Uuid                                    @map("user_id")
+  user    User                                    @relation(fields: [userId], references: [id])
+  tokenHash   String                              @map("token_hash")  @unique
+  expiresAt   TimestamptzString                   @map("expires_at")
+  revokedAt   TimestamptzString?                  @map("revoked_at")
+  createdAt   TimestamptzString                   @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
 enum Tier {
   @@type("pg/text@1")
     Free = "free"
