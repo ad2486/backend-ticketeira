@@ -32,6 +32,7 @@ export const usersRoutes: FastifyPluginAsyncZod = async (app) => {
 					401: errorResponse,
 					404: errorResponse,
 				},
+				security: [{ bearerAuth: [] }],
 			},
 		},
 		async (request) => getUserById(request.user.sub),

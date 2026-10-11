@@ -24,6 +24,11 @@ const app = Fastify({
 app.register(fastifySwagger, {
 	openapi: {
 		info: { title: "Ticketeira API", version: "0.1.0" },
+		components: {
+			securitySchemes: {
+				bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+			},
+		},
 	},
 	transform: jsonSchemaTransform,
 });
