@@ -9,8 +9,9 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 		{
 			schema: {
 				body: loginBody,
-				response: { 200: tokensResponse, 401: errorResponse },
+				response: { 200: tokensResponse, 401: errorResponse, 429: errorResponse },
 			},
+			config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
 		},
 		async (request) => {
 			const { userId, refreshToken } = await userLogin(request.body.email, request.body.password);
