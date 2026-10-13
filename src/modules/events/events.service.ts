@@ -1,5 +1,5 @@
 import { db } from "../../prisma/db.ts";
-import type { CreateEventInput } from "./events.schemas.ts";
+import type { CreateEventInput, UpdateEventInput } from "./events.schemas.ts";
 
 const TIER_EVENT_LIMIT = { free: 2, verified: 10, pro: 50 };
 const eventFields = [
@@ -51,4 +51,37 @@ export const listEventsByCreator = async (creatorId: string) => {
 		.select(...eventFields)
 		.orderBy((e) => e.startsAt.asc())
 		.all();
+};
+
+export const updateEvent = async (id: string, creatorId: string, data: UpdateEventInput) => {
+	const event = await db.orm.public.Event.where((e) => e.id.eq(id))
+		.where((e) => e.creatorId.eq(creatorId))
+		.where((e) => e.status.in(["draft", "published"]))
+		.select(...eventFields)
+		.update(data)
+		.catch((error: unknown) => {
+			if (
+				error instanceof Error &&
+				"sqlState" in error &&
+				error.sqlState === "23514" &&
+				"constraint" in error &&
+				typeof error.constraint === "string" &&
+				error.constraint.startsWith("event_sold_tickets_within_capacity")
+			) {
+				throw Object.assign(new Error("Capacity cannot be lower than tickets sold"), {
+					statusCode: 409,
+				});
+			}
+			throw error;
+		});
+	if (event) return event;
+	const result = await db.orm.public.Event.where((e) => e.id.eq(id))
+		.where((e) => e.creatorId.eq(creatorId))
+		.select("status")
+		.first();
+	if (!result) {
+		throw Object.assign(new Error("Event not found"), { statusCode: 404 });
+	} else {
+		throw Object.assign(new Error("Event can no longer be edited"), { statusCode: 409 });
+	}
 };

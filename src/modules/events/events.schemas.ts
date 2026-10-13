@@ -14,7 +14,7 @@ export const eventBody = z.object({
 			"Event must start in future",
 		),
 	capacity: z.int32().min(1),
-	minAge: z.int32().min(0).default(0),
+	minAge: z.int32().min(0).optional(),
 	ticketPriceCents: z.int32().min(0),
 });
 
@@ -35,4 +35,11 @@ export const eventResponse = z.object({
 	createdAt: timestamptz,
 });
 
+export const eventParams = z.object({ id: z.uuid() });
+
+export const updateEventBody = eventBody
+	.partial()
+	.refine((body) => Object.keys(body).length > 0, "At least one field must be provided");
+
 export type CreateEventInput = z.output<typeof eventBody>;
+export type UpdateEventInput = z.output<typeof updateEventBody>;
