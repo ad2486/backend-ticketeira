@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../../app.ts";
+import { db } from "../../prisma/db.ts";
 import { type App, accessTokenFor } from "../../test/helpers.ts";
 
 let app: App;
@@ -38,7 +39,6 @@ const createEvent = (accessToken: string | undefined, payload: object = eventPay
 		payload,
 	});
 
-// Este arquivo faz 5 logins (limite: 5 por arquivo, ver test/helpers.ts).
 describe("POST /events", () => {
 	it("creates a draft event owned by the caller", async () => {
 		const token = await accessTokenFor(app);
@@ -122,5 +122,78 @@ describe("GET /events/mine", () => {
 
 	it("requires authentication", async () => {
 		expect((await listMine()).statusCode).toBe(401);
+	});
+});
+
+describe("PATCH /events/:id", () => {
+	const patch = (accessToken: string, id: string, payload: object) =>
+		app.inject({
+			method: "PATCH",
+			url: `/events/${id}`,
+			headers: { authorization: `Bearer ${accessToken}` },
+			payload,
+		});
+
+	const newEvent = async (token: string) => (await createEvent(token)).json().id as string;
+
+	it("updates only the given fields", async () => {
+		const token = await accessTokenFor(app);
+		const id = await newEvent(token);
+
+		const res = await patch(token, id, { title: "Novo título" });
+
+		expect(res.statusCode).toBe(200);
+		expect(res.json().title).toBe("Novo título");
+		// .partial() do Zod mantém .default(): sem cuidado, isto voltaria 0
+		expect(res.json().minAge).toBe(18);
+	});
+
+	it("rejects empty and unknown-only bodies", async () => {
+		const token = await accessTokenFor(app);
+		const id = await newEvent(token);
+
+		expect((await patch(token, id, {})).statusCode).toBe(400);
+		// status não está no schema: o Zod descarta e sobra {}
+		expect((await patch(token, id, { status: "published" })).statusCode).toBe(400);
+	});
+
+	it("rejects a non-uuid id", async () => {
+		const token = await accessTokenFor(app);
+		expect((await patch(token, "abc", { title: "x" })).statusCode).toBe(400);
+	});
+
+	it("returns 404 for missing events and for other users' events", async () => {
+		const owner = await accessTokenFor(app);
+		const intruder = await accessTokenFor(app);
+		const id = await newEvent(owner);
+
+		const missing = await patch(intruder, "00000000-0000-0000-0000-000000000000", { title: "x" });
+		const notMine = await patch(intruder, id, { title: "x" });
+
+		expect(missing.statusCode).toBe(404);
+		expect(notMine.statusCode).toBe(404);
+		// mesma resposta: não revela que o evento existe
+		expect(notMine.json().message).toBe(missing.json().message);
+	});
+
+	it("returns 409 when the event is canceled", async () => {
+		const token = await accessTokenFor(app);
+		const id = await newEvent(token);
+		// sem rota de cancel ainda: prepara o estado direto no banco
+		await db.orm.public.Event.where((e) => e.id.eq(id)).update({ status: "canceled" });
+
+		expect((await patch(token, id, { title: "x" })).statusCode).toBe(409);
+	});
+
+	it("returns 409 when capacity would drop below tickets sold", async () => {
+		const token = await accessTokenFor(app);
+		const id = await newEvent(token);
+		// sem compra ainda: simula vendas direto no banco
+		await db.orm.public.Event.where((e) => e.id.eq(id)).update({ soldTickets: 50 });
+
+		const res = await patch(token, id, { capacity: 10 });
+
+		expect(res.statusCode).toBe(409);
+		expect(res.json().message).toContain("Capacity");
 	});
 });

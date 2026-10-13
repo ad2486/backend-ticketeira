@@ -23,16 +23,18 @@ export const createUser = async (app: App) => {
 		},
 	});
 	expect(res.statusCode).toBe(201);
-	return email;
+	return { id: res.json().id as string, email };
 };
 
 export const login = (app: App, email: string, pass = password) =>
 	app.inject({ method: "POST", url: "/auth/login", payload: { email, password: pass } });
 
-// Rate limit do login é 5/min por IP, e todo inject vem de 127.0.0.1.
-// O contador é por instância do app, ou seja, por arquivo de teste.
-export const accessTokenFor = async (app: App) => {
-	const res = await login(app, await createUser(app));
-	expect(res.statusCode).toBe(200);
-	return res.json().accessToken as string;
+// Assina o token direto, sem passar pelo /auth/login: o rate limit do login
+// (5/min por IP, e todo inject vem de 127.0.0.1) travaria os outros arquivos.
+// O login de verdade é testado em auth.test.ts.
+export const authenticatedUser = async (app: App) => {
+	const user = await createUser(app);
+	return { ...user, token: app.jwt.sign({ sub: user.id }) };
 };
+
+export const accessTokenFor = async (app: App) => (await authenticatedUser(app)).token;

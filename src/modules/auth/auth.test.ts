@@ -13,7 +13,7 @@ afterAll(async () => {
 	await app.close();
 });
 
-const createUser = () => helpers.createUser(app);
+const createUser = async () => (await helpers.createUser(app)).email;
 const login = (email: string, pass?: string) => helpers.login(app, email, pass);
 
 const refresh = (refreshToken: string) =>
@@ -26,7 +26,7 @@ const me = (accessToken?: string) =>
 		headers: accessToken ? { authorization: `Bearer ${accessToken}` } : {},
 	});
 
-// Este arquivo faz 4 logins (limite: 5 por arquivo, ver test/helpers.ts).
+// Este arquivo faz 4 logins: o rate limit do login é 5/min por app (ver test/helpers.ts).
 describe("auth", () => {
 	it("logs in and accesses /users/me", async () => {
 		const email = await createUser();
