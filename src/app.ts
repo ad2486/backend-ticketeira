@@ -12,6 +12,7 @@ import Fastify from "fastify";
 import { z } from "zod/v4";
 import { env } from "./env.ts";
 import { authRoutes } from "./modules/auth/auth.routes.ts";
+import { eventsRoutes } from "./modules/events/events.routes.ts";
 import { usersRoutes } from "./modules/users/users.routes.ts";
 
 export const buildApp = async () => {
@@ -77,6 +78,7 @@ export const buildApp = async () => {
 
 	app.register(usersRoutes, { prefix: "/users" });
 	app.register(authRoutes, { prefix: "/auth" });
+	app.register(eventsRoutes, { prefix: "/events" });
 
 	return app;
 };
