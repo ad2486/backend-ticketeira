@@ -1,34 +1,5 @@
 import { z } from "zod/v4";
-
-export const stateEnum = z.enum([
-	"AC",
-	"AL",
-	"AP",
-	"AM",
-	"BA",
-	"CE",
-	"DF",
-	"ES",
-	"GO",
-	"MA",
-	"MT",
-	"MS",
-	"MG",
-	"PA",
-	"PB",
-	"PR",
-	"PE",
-	"PI",
-	"RJ",
-	"RN",
-	"RS",
-	"RO",
-	"RR",
-	"SC",
-	"SP",
-	"SE",
-	"TO",
-]);
+import { stateEnum, timestamptz } from "../../common/schemas.ts";
 
 export const createUserBody = z.object({
 	name: z.string().trim().min(1),
@@ -56,10 +27,7 @@ export const userResponse = z.object({
 	city: z.string(),
 	tier: z.enum(["free", "verified", "pro"]),
 	state: stateEnum,
-	createdAt: z.codec(z.iso.datetime(), z.string(), {
-		decode: (iso) => iso,
-		encode: (pg) => Temporal.Instant.from(pg).toString(),
-	}),
+	createdAt: timestamptz,
 });
 
 export type CreateUserInput = z.output<typeof createUserBody>;
