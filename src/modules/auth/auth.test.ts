@@ -1,8 +1,9 @@
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../../app.ts";
+import * as helpers from "../../test/helpers.ts";
 
-let app: Awaited<ReturnType<typeof buildApp>>;
+let app: helpers.App;
 
 beforeAll(async () => {
 	app = await buildApp();
@@ -12,29 +13,8 @@ afterAll(async () => {
 	await app.close();
 });
 
-const password = "senha12345";
-
-const createUser = async () => {
-	const email = `${randomUUID()}@test.com`;
-	const res = await app.inject({
-		method: "POST",
-		url: "/users",
-		payload: {
-			name: "Teste",
-			email,
-			cpf: String(randomInt(1e10, 1e11)),
-			city: "Porto Alegre",
-			state: "RS",
-			birthDate: "2000-01-01",
-			password,
-		},
-	});
-	expect(res.statusCode).toBe(201);
-	return email;
-};
-
-const login = (email: string, pass = password) =>
-	app.inject({ method: "POST", url: "/auth/login", payload: { email, password: pass } });
+const createUser = () => helpers.createUser(app);
+const login = (email: string, pass?: string) => helpers.login(app, email, pass);
 
 const refresh = (refreshToken: string) =>
 	app.inject({ method: "POST", url: "/auth/refresh", payload: { refreshToken } });
@@ -46,8 +26,7 @@ const me = (accessToken?: string) =>
 		headers: accessToken ? { authorization: `Bearer ${accessToken}` } : {},
 	});
 
-// Rate limit do login é 5/min por IP e todo inject vem de 127.0.0.1:
-// este arquivo faz 4 logins. Passou de 5, o próximo vira 429.
+// Este arquivo faz 4 logins (limite: 5 por arquivo, ver test/helpers.ts).
 describe("auth", () => {
 	it("logs in and accesses /users/me", async () => {
 		const email = await createUser();
