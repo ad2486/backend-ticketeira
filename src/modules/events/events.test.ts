@@ -38,7 +38,7 @@ const createEvent = (accessToken: string | undefined, payload: object = eventPay
 		payload,
 	});
 
-// Este arquivo faz 4 logins (limite: 5 por arquivo, ver test/helpers.ts).
+// Este arquivo faz 5 logins (limite: 5 por arquivo, ver test/helpers.ts).
 describe("POST /events", () => {
 	it("creates a draft event owned by the caller", async () => {
 		const token = await accessTokenFor(app);
@@ -95,5 +95,32 @@ describe("POST /events", () => {
 
 	it("requires authentication", async () => {
 		expect((await createEvent(undefined)).statusCode).toBe(401);
+	});
+});
+
+describe("GET /events/mine", () => {
+	const listMine = (accessToken?: string) =>
+		app.inject({
+			method: "GET",
+			url: "/events/mine",
+			headers: accessToken ? { authorization: `Bearer ${accessToken}` } : {},
+		});
+
+	it("lists only the caller's events, soonest first", async () => {
+		const token = await accessTokenFor(app);
+		// criados fora de ordem para provar o orderBy
+		await createEvent(token, eventPayload({ title: "Depois", startsAt: "2099-06-01T20:00:00Z" }));
+		await createEvent(token, eventPayload({ title: "Antes", startsAt: "2099-01-01T20:00:00Z" }));
+
+		const res = await listMine(token);
+
+		expect(res.statusCode).toBe(200);
+		// o banco de teste tem eventos de outros usuários: só os 2 do caller podem vir
+		expect(res.json().map((e: { title: string }) => e.title)).toEqual(["Antes", "Depois"]);
+		expect(res.json()[0].startsAt).toBe("2099-01-01T20:00:00Z");
+	});
+
+	it("requires authentication", async () => {
+		expect((await listMine()).statusCode).toBe(401);
 	});
 });

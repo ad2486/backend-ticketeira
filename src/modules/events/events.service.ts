@@ -2,6 +2,22 @@ import { db } from "../../prisma/db.ts";
 import type { CreateEventInput } from "./events.schemas.ts";
 
 const TIER_EVENT_LIMIT = { free: 2, verified: 10, pro: 50 };
+const eventFields = [
+	"id",
+	"creatorId",
+	"title",
+	"description",
+	"location",
+	"city",
+	"state",
+	"startsAt",
+	"capacity",
+	"minAge",
+	"ticketPriceCents",
+	"status",
+	"soldTickets",
+	"createdAt",
+] as const;
 
 const users = db.sql.public.users;
 
@@ -26,21 +42,13 @@ export const createEvent = async (creatorId: string, data: CreateEventInput) => 
 				{ statusCode: 403 },
 			);
 		}
-		return tx.orm.public.Event.select(
-			"id",
-			"creatorId",
-			"title",
-			"description",
-			"location",
-			"city",
-			"state",
-			"startsAt",
-			"capacity",
-			"minAge",
-			"ticketPriceCents",
-			"status",
-			"soldTickets",
-			"createdAt",
-		).create({ ...data, creatorId });
+		return tx.orm.public.Event.select(...eventFields).create({ ...data, creatorId });
 	});
+};
+
+export const listEventsByCreator = async (creatorId: string) => {
+	return db.orm.public.Event.where((e) => e.creatorId.eq(creatorId))
+		.select(...eventFields)
+		.orderBy((e) => e.startsAt.asc())
+		.all();
 };
