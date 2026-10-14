@@ -3,7 +3,13 @@ import { z } from "zod/v4";
 import { authenticate } from "../../common/auth.ts";
 import { errorResponse } from "../../common/schemas.ts";
 import { eventBody, eventParams, eventResponse, updateEventBody } from "./events.schemas.ts";
-import { createEvent, listEventsByCreator, updateEvent } from "./events.service.ts";
+import {
+	cancelEvent,
+	createEvent,
+	listEventsByCreator,
+	publishEvent,
+	updateEvent,
+} from "./events.service.ts";
 
 export const eventsRoutes: FastifyPluginAsyncZod = async (app) => {
 	app.post(
@@ -56,5 +62,41 @@ export const eventsRoutes: FastifyPluginAsyncZod = async (app) => {
 			onRequest: authenticate,
 		},
 		async (request) => updateEvent(request.params.id, request.user.sub, request.body),
+	);
+
+	app.post(
+		"/:id/publish",
+		{
+			schema: {
+				params: eventParams,
+				response: {
+					200: eventResponse,
+					401: errorResponse,
+					404: errorResponse,
+					409: errorResponse,
+				},
+				security: [{ bearerAuth: [] }],
+			},
+			onRequest: authenticate,
+		},
+		async (request) => publishEvent(request.params.id, request.user.sub),
+	);
+
+	app.post(
+		"/:id/cancel",
+		{
+			schema: {
+				params: eventParams,
+				response: {
+					200: eventResponse,
+					401: errorResponse,
+					404: errorResponse,
+					409: errorResponse,
+				},
+				security: [{ bearerAuth: [] }],
+			},
+			onRequest: authenticate,
+		},
+		async (request) => cancelEvent(request.params.id, request.user.sub),
 	);
 };

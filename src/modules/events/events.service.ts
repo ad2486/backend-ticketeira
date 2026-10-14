@@ -1,5 +1,5 @@
 import { db } from "../../prisma/db.ts";
-import type { CreateEventInput, UpdateEventInput } from "./events.schemas.ts";
+import type { CreateEventInput, EventStatus, UpdateEventInput } from "./events.schemas.ts";
 
 const TIER_EVENT_LIMIT = { free: 2, verified: 10, pro: 50 };
 const eventFields = [
@@ -75,6 +75,10 @@ export const updateEvent = async (id: string, creatorId: string, data: UpdateEve
 			throw error;
 		});
 	if (event) return event;
+	return throwWriteFailure(id, creatorId, "Event can no longer be edited");
+};
+
+const throwWriteFailure = async (id: string, creatorId: string, conflictMessage: string) => {
 	const result = await db.orm.public.Event.where((e) => e.id.eq(id))
 		.where((e) => e.creatorId.eq(creatorId))
 		.select("status")
@@ -82,6 +86,29 @@ export const updateEvent = async (id: string, creatorId: string, data: UpdateEve
 	if (!result) {
 		throw Object.assign(new Error("Event not found"), { statusCode: 404 });
 	} else {
-		throw Object.assign(new Error("Event can no longer be edited"), { statusCode: 409 });
+		throw Object.assign(new Error(conflictMessage), { statusCode: 409 });
 	}
 };
+
+const transitionEvent = async (
+	id: string,
+	creatorId: string,
+	from: EventStatus[],
+	to: EventStatus,
+	conflictMessage: string,
+) => {
+	const event = await db.orm.public.Event.where((e) => e.id.eq(id))
+		.where((e) => e.creatorId.eq(creatorId))
+		.where((e) => e.status.in(from))
+		.where((e) => e.startsAt.gt(Temporal.Now.instant().toString()))
+		.select(...eventFields)
+		.update({ status: to });
+	if (event) return event;
+	return throwWriteFailure(id, creatorId, conflictMessage);
+};
+
+export const publishEvent = (id: string, creatorId: string) =>
+	transitionEvent(id, creatorId, ["draft"], "published", "Event cannot be published");
+
+export const cancelEvent = (id: string, creatorId: string) =>
+	transitionEvent(id, creatorId, ["draft", "published"], "canceled", "Event cannot be canceled");

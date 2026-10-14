@@ -43,3 +43,4 @@ export const updateEventBody = eventBody
 
 export type CreateEventInput = z.output<typeof eventBody>;
 export type UpdateEventInput = z.output<typeof updateEventBody>;
+export type EventStatus = z.output<typeof eventResponse>["status"];
