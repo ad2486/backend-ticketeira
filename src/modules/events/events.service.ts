@@ -1,5 +1,10 @@
 import { db } from "../../prisma/db.ts";
-import type { CreateEventInput, EventStatus, UpdateEventInput } from "./events.schemas.ts";
+import type {
+	CreateEventInput,
+	EventStatus,
+	PublicEventsQuery,
+	UpdateEventInput,
+} from "./events.schemas.ts";
 
 const TIER_EVENT_LIMIT = { free: 2, verified: 10, pro: 50 };
 const eventFields = [
@@ -112,3 +117,29 @@ export const publishEvent = (id: string, creatorId: string) =>
 
 export const cancelEvent = (id: string, creatorId: string) =>
 	transitionEvent(id, creatorId, ["draft", "published"], "canceled", "Event cannot be canceled");
+
+export const listPublicEvent = async ({ city, state, limit, offset }: PublicEventsQuery) => {
+	let query = db.orm.public.Event.where((e) => e.status.eq("published")).where((e) =>
+		e.startsAt.gt(Temporal.Now.instant().toString()),
+	);
+	if (city) query = query.where((e) => e.city.ilike(city));
+	if (state) query = query.where((e) => e.state.eq(state));
+
+	return query
+		.select(...eventFields)
+		.orderBy([(e) => e.startsAt.asc(), (e) => e.id.asc()])
+		.limit(limit)
+		.offset(offset)
+		.all();
+};
+
+export const getPublicEvent = async (id: string) => {
+	const result = await db.orm.public.Event.where((e) => e.id.eq(id))
+		.where((e) => e.status.eq("published"))
+		.select(...eventFields)
+		.first();
+	if (!result) {
+		throw Object.assign(new Error("Event not found"), { statusCode: 404 });
+	}
+	return result;
+};

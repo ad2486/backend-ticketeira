@@ -41,6 +41,14 @@ export const updateEventBody = eventBody
 	.partial()
 	.refine((body) => Object.keys(body).length > 0, "At least one field must be provided");
 
+export const publicEventsQuery = z.object({
+	city: z.string().trim().min(1).optional(),
+	state: stateEnum.optional(),
+	limit: z.coerce.number().int().min(1).max(100).default(20),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
 export type CreateEventInput = z.output<typeof eventBody>;
 export type UpdateEventInput = z.output<typeof updateEventBody>;
 export type EventStatus = z.output<typeof eventResponse>["status"];
+export type PublicEventsQuery = z.output<typeof publicEventsQuery>;
