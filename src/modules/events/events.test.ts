@@ -197,3 +197,70 @@ describe("PATCH /events/:id", () => {
 		expect(res.json().message).toContain("Capacity");
 	});
 });
+
+describe("POST /events/:id/publish and /cancel", () => {
+	const action = (accessToken: string | undefined, id: string, name: "publish" | "cancel") =>
+		app.inject({
+			method: "POST",
+			url: `/events/${id}/${name}`,
+			headers: accessToken ? { authorization: `Bearer ${accessToken}` } : {},
+		});
+
+	const newEvent = async (token: string) => (await createEvent(token)).json().id as string;
+
+	it("publishes a draft once", async () => {
+		const token = await accessTokenFor(app);
+		const id = await newEvent(token);
+
+		const first = await action(token, id, "publish");
+		expect(first.statusCode).toBe(200);
+		expect(first.json().status).toBe("published");
+
+		expect((await action(token, id, "publish")).statusCode).toBe(409);
+	});
+
+	it("cancels a published event once", async () => {
+		const token = await accessTokenFor(app);
+		const id = await newEvent(token);
+		await action(token, id, "publish");
+
+		const first = await action(token, id, "cancel");
+		expect(first.statusCode).toBe(200);
+		expect(first.json().status).toBe("canceled");
+
+		expect((await action(token, id, "cancel")).statusCode).toBe(409);
+		expect((await action(token, id, "publish")).statusCode).toBe(409);
+	});
+
+	it("frees a tier slot when an event is canceled", async () => {
+		const token = await accessTokenFor(app);
+		const id = await newEvent(token);
+		await newEvent(token);
+		expect((await createEvent(token)).statusCode).toBe(403);
+
+		await action(token, id, "cancel");
+
+		expect((await createEvent(token)).statusCode).toBe(201);
+	});
+
+	it("refuses to publish an event that already started", async () => {
+		const token = await accessTokenFor(app);
+		const id = await newEvent(token);
+		// o schema não aceita startsAt no passado: prepara direto no banco
+		await db.orm.public.Event.where((e) => e.id.eq(id)).update({
+			startsAt: "2020-01-01T00:00:00Z",
+		});
+
+		expect((await action(token, id, "publish")).statusCode).toBe(409);
+	});
+
+	it("returns 404 for other users' events and 401 without token", async () => {
+		const owner = await accessTokenFor(app);
+		const intruder = await accessTokenFor(app);
+		const id = await newEvent(owner);
+
+		expect((await action(intruder, id, "publish")).statusCode).toBe(404);
+		expect((await action(intruder, id, "cancel")).statusCode).toBe(404);
+		expect((await action(undefined, id, "publish")).statusCode).toBe(401);
+	});
+});
