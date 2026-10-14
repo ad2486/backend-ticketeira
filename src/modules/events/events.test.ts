@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../../app.ts";
 import { db } from "../../prisma/db.ts";
@@ -262,5 +263,114 @@ describe("POST /events/:id/publish and /cancel", () => {
 		expect((await action(intruder, id, "publish")).statusCode).toBe(404);
 		expect((await action(intruder, id, "cancel")).statusCode).toBe(404);
 		expect((await action(undefined, id, "publish")).statusCode).toBe(401);
+	});
+});
+
+describe("GET /events (public listing)", () => {
+	const listPublic = (query: string) => app.inject({ method: "GET", url: `/events?${query}` });
+
+	// Cidade única por teste: o banco de teste acumula eventos de outras execuções.
+	const publishedIn = async (token: string, overrides: Record<string, unknown>) => {
+		const id = (await createEvent(token, eventPayload(overrides))).json().id as string;
+		await app.inject({
+			method: "POST",
+			url: `/events/${id}/publish`,
+			headers: { authorization: `Bearer ${token}` },
+		});
+		return id;
+	};
+
+	it("lists only published future events, without auth", async () => {
+		const city = randomUUID();
+		const a = await accessTokenFor(app);
+		const b = await accessTokenFor(app);
+
+		const visible = await publishedIn(a, { city, title: "Visível" });
+		await createEvent(a, eventPayload({ city, title: "Rascunho" }));
+		const past = await publishedIn(b, { city, title: "Passado" });
+		await db.orm.public.Event.where((e) => e.id.eq(past)).update({
+			startsAt: "2020-01-01T00:00:00Z",
+		});
+		const canceled = await publishedIn(b, { city, title: "Cancelado" });
+		await db.orm.public.Event.where((e) => e.id.eq(canceled)).update({ status: "canceled" });
+
+		const res = await listPublic(`city=${city}`);
+
+		expect(res.statusCode).toBe(200);
+		expect(res.json().map((e: { id: string }) => e.id)).toEqual([visible]);
+	});
+
+	it("matches city case-insensitively and filters by state", async () => {
+		const city = randomUUID();
+		const token = await accessTokenFor(app);
+		await publishedIn(token, { city, state: "RS", title: "RS" });
+
+		const upper = await listPublic(`city=${city.toUpperCase()}`);
+		const otherState = await listPublic(`city=${city}&state=SP`);
+
+		expect(upper.json().map((e: { title: string }) => e.title)).toEqual(["RS"]);
+		expect(otherState.json()).toEqual([]);
+	});
+
+	it("paginates in startsAt order", async () => {
+		const city = randomUUID();
+		const a = await accessTokenFor(app);
+		const b = await accessTokenFor(app);
+		// criados fora de ordem; 2 donos para não bater no limite do tier free
+		await publishedIn(a, { city, title: "3º", startsAt: "2099-03-01T20:00:00Z" });
+		await publishedIn(a, { city, title: "1º", startsAt: "2099-01-01T20:00:00Z" });
+		await publishedIn(b, { city, title: "2º", startsAt: "2099-02-01T20:00:00Z" });
+
+		const titles = async (query: string) =>
+			(await listPublic(query)).json().map((e: { title: string }) => e.title);
+
+		expect(await titles(`city=${city}&limit=2`)).toEqual(["1º", "2º"]);
+		expect(await titles(`city=${city}&limit=2&offset=2`)).toEqual(["3º"]);
+	});
+
+	it("rejects invalid query params", async () => {
+		for (const query of ["limit=abc", "limit=0", "limit=101", "offset=-1", "state=XX"]) {
+			expect((await listPublic(query)).statusCode, query).toBe(400);
+		}
+	});
+});
+
+describe("GET /events/:id (public detail)", () => {
+	const getPublic = (id: string) => app.inject({ method: "GET", url: `/events/${id}` });
+	const publish = (token: string, id: string) =>
+		app.inject({
+			method: "POST",
+			url: `/events/${id}/publish`,
+			headers: { authorization: `Bearer ${token}` },
+		});
+
+	it("shows a published event without auth", async () => {
+		const token = await accessTokenFor(app);
+		const id = (await createEvent(token)).json().id as string;
+		await publish(token, id);
+
+		const res = await getPublic(id);
+
+		expect(res.statusCode).toBe(200);
+		expect(res.json().id).toBe(id);
+	});
+
+	it("hides drafts and canceled events", async () => {
+		const token = await accessTokenFor(app);
+		const draft = (await createEvent(token)).json().id as string;
+		const canceled = (await createEvent(token)).json().id as string;
+		await app.inject({
+			method: "POST",
+			url: `/events/${canceled}/cancel`,
+			headers: { authorization: `Bearer ${token}` },
+		});
+
+		expect((await getPublic(draft)).statusCode).toBe(404);
+		expect((await getPublic(canceled)).statusCode).toBe(404);
+	});
+
+	it("returns 404 for unknown ids and 400 for invalid ones", async () => {
+		expect((await getPublic("00000000-0000-0000-0000-000000000000")).statusCode).toBe(404);
+		expect((await getPublic("abc")).statusCode).toBe(400);
 	});
 });
