@@ -40,3 +40,6 @@ export const timestamptz = z.codec(z.iso.datetime(), z.string(), {
 	decode: (iso) => iso,
 	encode: (pg) => Temporal.Instant.from(pg).toString(),
 });
+
+// Params de rotas /:id (eventos, pedidos...).
+export const idParams = z.object({ id: z.uuid() });

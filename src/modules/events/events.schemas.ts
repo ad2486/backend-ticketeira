@@ -35,8 +35,6 @@ export const eventResponse = z.object({
 	createdAt: timestamptz,
 });
 
-export const eventParams = z.object({ id: z.uuid() });
-
 export const updateEventBody = eventBody
 	.partial()
 	.refine((body) => Object.keys(body).length > 0, "At least one field must be provided");
