@@ -7,7 +7,7 @@ export type App = Awaited<ReturnType<typeof buildApp>>;
 export const password = "senha12345";
 
 // Email e CPF únicos por chamada: dispensa limpar o banco entre execuções.
-export const createUser = async (app: App) => {
+export const createUser = async (app: App, { birthDate = "2000-01-01" } = {}) => {
 	const email = `${randomUUID()}@test.com`;
 	const res = await app.inject({
 		method: "POST",
@@ -18,7 +18,7 @@ export const createUser = async (app: App) => {
 			cpf: String(randomInt(1e10, 1e11)),
 			city: "Porto Alegre",
 			state: "RS",
-			birthDate: "2000-01-01",
+			birthDate,
 			password,
 		},
 	});
@@ -32,8 +32,8 @@ export const login = (app: App, email: string, pass = password) =>
 // Assina o token direto, sem passar pelo /auth/login: o rate limit do login
 // (5/min por IP, e todo inject vem de 127.0.0.1) travaria os outros arquivos.
 // O login de verdade é testado em auth.test.ts.
-export const authenticatedUser = async (app: App) => {
-	const user = await createUser(app);
+export const authenticatedUser = async (app: App, options?: { birthDate?: string }) => {
+	const user = await createUser(app, options);
 	return { ...user, token: app.jwt.sign({ sub: user.id }) };
 };
 
