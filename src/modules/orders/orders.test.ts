@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../../app.ts";
 import { db } from "../../prisma/db.ts";
+import * as helpers from "../../test/helpers.ts";
 import { type App, accessTokenFor, authenticatedUser } from "../../test/helpers.ts";
 
 let app: App;
@@ -18,47 +19,10 @@ const inThirtyDays = () =>
 	Temporal.Now.instant()
 		.add({ hours: 24 * 30 })
 		.toString();
-
-// Cria um evento com um organizador novo (limite do tier free) e publica.
-const publishedEvent = async (overrides: Record<string, unknown> = {}) => {
-	const token = await accessTokenFor(app);
-	const created = await app.inject({
-		method: "POST",
-		url: "/events",
-		headers: { authorization: `Bearer ${token}` },
-		payload: {
-			title: "Show",
-			location: "Opinião",
-			city: "Porto Alegre",
-			state: "RS",
-			startsAt: inThirtyDays(),
-			capacity: 100,
-			minAge: 0,
-			ticketPriceCents: 5000,
-			...overrides,
-		},
-	});
-	expect(created.statusCode).toBe(201);
-	const id = created.json().id as string;
-	await app.inject({
-		method: "POST",
-		url: `/events/${id}/publish`,
-		headers: { authorization: `Bearer ${token}` },
-	});
-	return { id, token };
-};
-
-// IP aleatório por padrão: o rate limit da compra é 10/min por IP.
-let ipCounter = 0;
-const nextIp = () => `10.0.${Math.floor(ipCounter / 250)}.${(ipCounter++ % 250) + 1}`;
-
-const buy = (accessToken: string | undefined, eventId: string, remoteAddress = nextIp()) =>
-	app.inject({
-		method: "POST",
-		url: `/events/${eventId}/orders`,
-		headers: accessToken ? { authorization: `Bearer ${accessToken}` } : {},
-		remoteAddress,
-	});
+const publishedEvent = (overrides?: Record<string, unknown>) =>
+	helpers.publishedEvent(app, overrides);
+const buy = (accessToken: string | undefined, eventId: string, remoteAddress?: string) =>
+	helpers.buyTicket(app, accessToken, eventId, remoteAddress);
 
 const soldTickets = async (eventId: string) =>
 	(
