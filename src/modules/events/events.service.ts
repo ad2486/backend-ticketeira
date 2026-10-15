@@ -6,7 +6,7 @@ import type {
 	UpdateEventInput,
 } from "./events.schemas.ts";
 
-const TIER_EVENT_LIMIT = { free: 2, verified: 10, pro: 50 };
+const TIER_EVENT_LIMIT = { free: 2, verified: 5, pro: 8 };
 const eventFields = [
 	"id",
 	"creatorId",
