@@ -14,6 +14,7 @@ const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 	LOG_LEVEL: z.enum(["silent", "fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 	JWT_SECRET: z.string().min(32),
+	FRONTEND_ORIGIN: z.url().default("http://localhost:5173"),
 });
 
 const result = envSchema.safeParse(process.env);

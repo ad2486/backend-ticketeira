@@ -1,3 +1,4 @@
+import fastifyCors from "@fastify/cors";
 import { fastifyJwt } from "@fastify/jwt";
 import { fastifyRateLimit } from "@fastify/rate-limit";
 import { fastifySwagger } from "@fastify/swagger";
@@ -40,6 +41,11 @@ export const buildApp = async () => {
 	app.register(fastifyJwt, {
 		secret: env.JWT_SECRET,
 		sign: { expiresIn: "15m" },
+	});
+	app.register(fastifyCors, {
+		origin: env.FRONTEND_ORIGIN,
+		credentials: true,
+		methods: ["GET", "POST", "PATCH"],
 	});
 
 	app.setValidatorCompiler(validatorCompiler);
