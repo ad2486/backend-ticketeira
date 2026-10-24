@@ -1,3 +1,4 @@
+import { fastifyCookie } from "@fastify/cookie";
 import fastifyCors from "@fastify/cors";
 import { fastifyJwt } from "@fastify/jwt";
 import { fastifyRateLimit } from "@fastify/rate-limit";
@@ -83,6 +84,8 @@ export const buildApp = async () => {
 			message: "An unexpected error occurred",
 		});
 	});
+
+	app.register(fastifyCookie);
 
 	app.register(usersRoutes, { prefix: "/users" });
 	app.register(authRoutes, { prefix: "/auth" });

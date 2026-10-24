@@ -50,3 +50,11 @@ export const refreshSession = async (token: string) => {
 	const refreshToken = await issueRefreshToken(revoked.userId);
 	return { userId: revoked.userId, refreshToken };
 };
+
+export const revokeRefreshToken = async (token: string) => {
+	const hash = hashToken(token);
+	const now = Temporal.Now.instant().toString();
+	await db.orm.public.RefreshToken.where((t) => t.tokenHash.eq(hash))
+		.where((t) => t.revokedAt.isNull())
+		.updateAndCount({ revokedAt: now });
+};

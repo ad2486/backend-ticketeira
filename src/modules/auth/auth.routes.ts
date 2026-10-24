@@ -1,7 +1,17 @@
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
+import { z } from "zod/v4";
 import { errorResponse } from "../../common/schemas.ts";
-import { loginBody, refreshBody, tokensResponse } from "./auth.schemas.ts";
-import { refreshSession, userLogin } from "./auth.service.ts";
+import { accessTokenResponse, loginBody } from "./auth.schemas.ts";
+import { refreshSession, revokeRefreshToken, userLogin } from "./auth.service.ts";
+
+const REFRESH_COOKIE = "refreshToken";
+const refreshCookieOptions = {
+	httpOnly: true,
+	secure: "auto",
+	sameSite: "strict",
+	path: "/auth",
+	maxAge: 60 * 60 * 24 * 30,
+} as const;
 
 export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 	app.post(
@@ -9,14 +19,14 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 		{
 			schema: {
 				body: loginBody,
-				response: { 200: tokensResponse, 401: errorResponse, 429: errorResponse },
+				response: { 200: accessTokenResponse, 401: errorResponse, 429: errorResponse },
 			},
 			config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
 		},
-		async (request) => {
+		async (request, reply) => {
 			const { userId, refreshToken } = await userLogin(request.body.email, request.body.password);
-			const accessToken = app.jwt.sign({ sub: userId });
-			return { accessToken, refreshToken };
+			reply.setCookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions);
+			return { accessToken: app.jwt.sign({ sub: userId }) };
 		},
 	);
 
@@ -24,14 +34,24 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 		"/refresh",
 		{
 			schema: {
-				body: refreshBody,
-				response: { 200: tokensResponse, 401: errorResponse },
+				response: { 200: accessTokenResponse, 401: errorResponse },
 			},
 		},
-		async (request) => {
-			const { userId, refreshToken } = await refreshSession(request.body.refreshToken);
-			const accessToken = app.jwt.sign({ sub: userId });
-			return { accessToken, refreshToken };
+		async (request, reply) => {
+			const token = request.cookies[REFRESH_COOKIE];
+			if (!token) {
+				throw Object.assign(new Error("Invalid refresh token"), { statusCode: 401 });
+			}
+			const { userId, refreshToken } = await refreshSession(token);
+			reply.setCookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions);
+			return { accessToken: app.jwt.sign({ sub: userId }) };
 		},
 	);
+
+	app.post("/logout", { schema: { response: { 204: z.null() } } }, async (request, reply) => {
+		const token = request.cookies[REFRESH_COOKIE];
+		if (token) await revokeRefreshToken(token);
+		reply.clearCookie(REFRESH_COOKIE, refreshCookieOptions);
+		return reply.code(204).send(null);
+	});
 };
