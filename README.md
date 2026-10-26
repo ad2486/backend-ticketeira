@@ -88,6 +88,12 @@ Schemas completos em `/docs`.
 - **Refresh token:** a rotação é um `UPDATE` condicional. Reusar um token já
   usado revoga todas as sessões do usuário.
 
+## Limitações conhecidas
+
+- O access token (JWT) não é revogável: depois do logout, ele continua válido até
+  expirar (no máximo 15 minutos). O refresh token, esse sim, é revogado na hora.
+  Revogação imediata exigiria uma consulta ao banco em toda requisição.
+
 ## Prisma
 
 Depois de alterar `src/prisma/contract.prisma`:
