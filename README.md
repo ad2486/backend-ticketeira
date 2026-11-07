@@ -1,7 +1,8 @@
 # Ticketeira: backend
 
 API de uma bilheteria de eventos. Qualquer usuário pode organizar eventos e comprar
-ingressos. Projeto de estudo, com foco em regras de negócio e concorrência.
+ingressos. Projeto de estudo, com foco em regras de negócio e concorrência,
+encerrado no MVP. A interface web está no repositório `frontend-ticketeira`.
 
 ## Stack
 
@@ -93,6 +94,11 @@ Schemas completos em `/docs`.
 - O access token (JWT) não é revogável: depois do logout, ele continua válido até
   expirar (no máximo 15 minutos). O refresh token, esse sim, é revogado na hora.
   Revogação imediata exigiria uma consulta ao banco em toda requisição.
+- O `PATCH /events/:id` ainda não bloqueia mudanças em eventos com ingressos
+  vendidos. A regra decidida (`minAge` só pode descer; `startsAt` e `location`
+  não mudam depois da primeira venda, com 409) ficou de fora; o frontend não
+  expõe edição de evento.
+- Fora do escopo: pagamento (PIX), check-in e transferência de ingresso.
 
 ## Prisma
 
